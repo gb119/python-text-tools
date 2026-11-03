@@ -20,8 +20,17 @@ requirements:
     - python >=3.8
 
 test:
+  requires:
+    - pytest
+    - ipython >=7.17
+    - astunparse
+    - numpy
+  source_files:
+    - tests
   imports:
     - repl_text_tools
+  commands:
+    - python -m pytest tests --import-mode=importlib
 
 about:
   home: https://github.com/gb119/python-text-tools

@@ -1,5 +1,7 @@
 """Filter classes that manipulate the repr of a value via ``__ror__``."""
 import re
+from decimal import Decimal
+from operator import index
 
 
 class Text(str):
@@ -9,12 +11,19 @@ class Text(str):
         return str(self)
 
 
-def _to_lines(value):
+def _to_text(value):
     if isinstance(value, str):
         text = str(value)
     else:
         text = repr(value)
-    return text.splitlines()
+    return text
+
+
+def _line_count(n):
+    n = index(n)
+    if n < 0:
+        raise ValueError("line count must be non-negative")
+    return n
 
 
 class Filter:
@@ -24,14 +33,18 @@ class Filter:
     def process(self, lines):
         raise NotImplementedError
 
+    def process_text(self, text):
+        """Process source text, retaining line-based subclass compatibility."""
+        return self.process(text.splitlines())
+
     def __ror__(self, other):
-        result = self.process(_to_lines(other))
+        result = self.process_text(_to_text(other))
         if isinstance(result, str):
             return Text(result)
         return Text("\n".join(result))
 
     def __call__(self, value):
-        return value | self
+        return self.__ror__(value)
 
 
 class grep(Filter):
@@ -48,16 +61,20 @@ class grep(Filter):
 
 
 class head(Filter):
+    """Keep the first n lines; n must be a non-negative integer."""
+
     def __init__(self, n=10):
-        self.n = n
+        self.n = _line_count(n)
 
     def process(self, lines):
         return lines[:self.n]
 
 
 class tail(Filter):
+    """Keep the last n lines; n must be a non-negative integer."""
+
     def __init__(self, n=10):
-        self.n = n
+        self.n = _line_count(n)
 
     def process(self, lines):
         return lines[-self.n:] if self.n > 0 else []
@@ -73,8 +90,8 @@ class sort(Filter):
         key = self.key
         if key is None and self.numeric:
             def key(l):
-                m = re.match(r"\s*-?\d+(\.\d+)?", l)
-                return float(m.group()) if m else 0.0
+                m = re.match(r"\s*[+-]?(?:\d+(?:\.\d*)?|\.\d+)", l)
+                return Decimal(m.group().strip()) if m else Decimal(0)
         return sorted(lines, key=key, reverse=self.reverse)
 
 
@@ -97,15 +114,19 @@ class uniq(Filter):
 
 
 class wc(Filter):
-    """Count lines, words and characters (or just one of them)."""
+    """Count split lines, whitespace-separated words and source characters."""
 
     def __init__(self, lines=False, words=False, chars=False):
         self.sel = (lines, words, chars)
 
     def process(self, lines):
+        return self.process_text("\n".join(lines))
+
+    def process_text(self, text):
+        lines = text.splitlines()
         counts = (len(lines),
                   sum(len(l.split()) for l in lines),
-                  sum(len(l) + 1 for l in lines))
+                  len(text))
         if not any(self.sel):
             return " ".join(str(c) for c in counts)
         return " ".join(str(c) for c, s in zip(counts, self.sel) if s)

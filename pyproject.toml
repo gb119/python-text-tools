@@ -13,6 +13,7 @@ dependencies = []
 
 [project.optional-dependencies]
 test = ["pytest"]
+ipython = ["ipython>=7.17", "astunparse; python_version < '3.9'"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
