@@ -1,0 +1,30 @@
+{% set data = load_file_data("../pyproject.toml", from_recipe_dir=True) %}
+package:
+  name: repl-text-tools
+  version: {{ data["project"]["version"] }}
+
+source:
+  path: ..
+
+build:
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python >=3.8
+    - pip
+    - setuptools >=61
+    - wheel
+  run:
+    - python >=3.8
+
+test:
+  imports:
+    - repl_text_tools
+
+about:
+  home: https://github.com/gb119/python-text-tools
+  license: GPL-3.0-or-later
+  license_file: LICENSE
+  summary: Unix-like text processing filters for REPLs
