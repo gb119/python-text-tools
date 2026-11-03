@@ -1,0 +1,25 @@
+name: build
+on: [push, pull_request]
+jobs:
+  wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install build pytest && pip install -e . && pytest
+      - run: python -m build
+      - uses: actions/upload-artifact@v4
+        with: {name: wheels, path: dist/*}
+  conda:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with: {auto-update-conda: true, python-version: "3.12", channels: conda-forge}
+      - shell: bash -el {0}
+        run: |
+          conda install -y conda-build
+          conda build conda --output-folder conda-out
+      - uses: actions/upload-artifact@v4
+        with: {name: conda-package, path: conda-out}
